@@ -76,4 +76,14 @@ public class ProposalServiceImpl extends ServiceImpl<ProposalMapper, Proposal> i
         this.rabbitTemplate.convertAndSend("proposal_get.queue1", proposalVOList);
     }
 
+    @Override
+    public void processWithdraw(Integer pid) {
+        this.proposalMapper.updateStatus(pid, 2);
+        Map<String, Object> data = new HashMap<>();
+        ProposalVO proposalVO = Proposal2VO.convert(this.proposalMapper.selectById(pid));
+        data.put("cid", proposalVO.getCid());
+        data.put("status","ok");
+        this.rabbitTemplate.convertAndSend("withdraw_notify.queue", data);
+    }
+
 }

@@ -10,4 +10,6 @@ public interface ProposalService extends IService<Proposal> {
     void processAccept(Object pid);
 
     void getAllWaitingProposal(Integer id);
+
+    void processWithdraw(Integer pid);
 }

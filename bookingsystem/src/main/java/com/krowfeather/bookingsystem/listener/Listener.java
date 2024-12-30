@@ -44,9 +44,11 @@ public class Listener {
             value = @Queue(name = "proposal_withdraw.queue", durable = "true"),
             exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
     ))
-    public void ProposalWithdrawListener(String message) throws JsonProcessingException {
-        Map<String, Object> data = objectMapper.readValue(message, new TypeReference<Map<String, Object>>() {});
+    public void ProposalWithdrawListener(Message message) throws JsonProcessingException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter =new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message);
         System.out.println("PROPOSAL WITHDRAW SERVICE Received message: " + data);
+        proposalService.processWithdraw((Integer) data.get("pid"));
     }
 
     @RabbitListener(bindings = @QueueBinding(

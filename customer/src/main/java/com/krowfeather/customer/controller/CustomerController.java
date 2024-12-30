@@ -18,6 +18,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,14 +52,14 @@ public class CustomerController {
         return "success";
     }
 
-    @PostMapping("/withdraw")
-    public String withdraw(@RequestParam Integer pid) {
+    @PostMapping("/withdraw/{pid}")
+    public String withdraw(@PathVariable Integer pid) {
         this.customerService.withdraw(pid);
         return "withdraw success";
     }
 
-    @PostMapping("/accept")
-    public String accept(@RequestParam Integer pid) {
+    @PostMapping("/accept/{pid}")
+    public String accept(@PathVariable Integer pid) {
         this.customerService.accept(pid);
         return "accept success";
     }
@@ -110,8 +111,23 @@ public class CustomerController {
         }
     }
 
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "withdraw_notify.queue",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listen2(Message message) throws InterruptedException, IOException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> message1 = (Map<String,Object>) jackson2JsonMessageConverter.fromMessage(message);
+        Integer cid = (Integer) message1.get("cid");
+        SseEmitter sseEmitter = sseRefreshProposalEmitterMap.get(cid);
+        sseEmitter.send(SseEmitter.event().data("withdraw"));
+    }
+
     private final Map<Integer,SseEmitter> sseEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseWaitingProposalEmitterMap = new ConcurrentHashMap<>();
+    private final Map<Integer,SseEmitter> sseRefreshProposalEmitterMap = new ConcurrentHashMap<>();
+
     @GetMapping("/subscribe/{id}")
     public SseEmitter subscribe(@PathVariable Integer id) {
         SseEmitter sseEmitter = new SseEmitter(0L);
@@ -128,5 +144,12 @@ public class CustomerController {
         sseEmitter.onError(e->log.error("Error in SSE stream", e));
         return sseEmitter;
     }
-
+    @GetMapping("/refresh_proposal_subscribe/{id}")
+    public SseEmitter refreshProposalSubscribe(@PathVariable Integer id) {
+        SseEmitter sseEmitter = new SseEmitter(0L);
+        sseRefreshProposalEmitterMap.put(id,sseEmitter);
+        sseEmitter.onCompletion(() -> sseRefreshProposalEmitterMap.remove(id));
+        sseEmitter.onError(e->log.error("Error in SSE stream", e));
+        return sseEmitter;
+    }
 }
