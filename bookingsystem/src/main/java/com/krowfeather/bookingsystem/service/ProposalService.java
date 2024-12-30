@@ -12,4 +12,10 @@ public interface ProposalService extends IService<Proposal> {
     void getAllWaitingProposal(Integer id);
 
     void processWithdraw(Integer pid);
+
+    void processAccept(Integer pid);
+
+    void getAllWithdrawProposal(Integer id);
+
+    void getAllAcceptProposal(Integer id);
 }

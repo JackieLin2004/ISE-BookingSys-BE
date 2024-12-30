@@ -55,10 +55,11 @@ public class Listener {
             value = @Queue(name = "proposal_accept.queue", durable = "true"),
             exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
     ))
-    public void ProposalAcceptListener(String message) throws JsonProcessingException {
-        Map<String, Object> data = objectMapper.readValue(message, new TypeReference<Map<String, Object>>() {});
+    public void ProposalAcceptListener(Message message) throws JsonProcessingException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message);
         System.out.println("PROPOSAL ACCEPT SERVICE Received message: " + data);
-        proposalService.processAccept(data.get("pid"));
+        proposalService.processAccept((Integer)data.get("pid"));
     }
 
     @RabbitListener(bindings = @QueueBinding(
@@ -70,5 +71,27 @@ public class Listener {
         Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
         System.out.println("PROPOSAL GET SERVICE Received message: " + data);
         proposalService.getAllWaitingProposal((Integer) data.get("id"));
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "proposal_get_withdraw.queue", durable = "true"),
+            exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
+    ))
+    public void ProposalGetWithdrawListener(Message message) throws JsonProcessingException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
+        System.out.println("PROPOSAL GET SERVICE Received message: " + data);
+        proposalService.getAllWithdrawProposal((Integer) data.get("id"));
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "proposal_get_accept.queue", durable = "true"),
+            exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
+    ))
+    public void ProposalGetAcceptListener(Message message) throws JsonProcessingException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
+        System.out.println("PROPOSAL GET SERVICE Received message: " + data);
+        proposalService.getAllAcceptProposal((Integer) data.get("id"));
     }
 }

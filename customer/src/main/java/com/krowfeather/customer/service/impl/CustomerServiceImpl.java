@@ -56,6 +56,20 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         return "";
     }
 
+    @Override
+    public String allWithdrawedProposal(Integer id) {
+        Map<String, Object> data = Map.of("id", id);
+        this.rabbitTemplate.convertAndSend("proposal_get_withdraw.queue",data);
+        return "";
+    }
+
+    @Override
+    public String allAcceptedProposal(Integer id) {
+        Map<String, Object> data = Map.of("id", id);
+        this.rabbitTemplate.convertAndSend("proposal_get_accept.queue",data);
+        return "";
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     public void init() {
         if (this.count() > 0) {

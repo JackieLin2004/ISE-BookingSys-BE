@@ -1,6 +1,5 @@
 package com.krowfeather.bookingsystem.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 
 @Service
@@ -84,6 +81,38 @@ public class ProposalServiceImpl extends ServiceImpl<ProposalMapper, Proposal> i
         data.put("cid", proposalVO.getCid());
         data.put("status","ok");
         this.rabbitTemplate.convertAndSend("withdraw_notify.queue", data);
+    }
+
+    @Override
+    public void processAccept(Integer pid) {
+        this.proposalMapper.updateStatus(pid, 1);
+        Map<String, Object> data = new HashMap<>();
+        ProposalVO proposalVO = Proposal2VO.convert(this.proposalMapper.selectById(pid));
+        data.put("cid", proposalVO.getCid());
+        data.put("status","ok");
+        this.rabbitTemplate.convertAndSend("accept_notify.queue", data);
+    }
+
+    @Override
+    public void getAllWithdrawProposal(Integer id) {
+        List<Proposal> proposals = proposalMapper.getAllWithdrawProposal(id);
+        List<ProposalVO> proposalVOList = new ArrayList<>();
+        for (Proposal proposal : proposals) {
+            ProposalVO proposalVO = Proposal2VO.convert(proposal);
+            proposalVOList.add(proposalVO);
+        }
+        this.rabbitTemplate.convertAndSend("proposal_get_withdraw.queue1", proposalVOList);
+    }
+
+    @Override
+    public void getAllAcceptProposal(Integer id) {
+        List<Proposal> proposals = proposalMapper.getAllAcceptProposal(id);
+        List<ProposalVO> proposalVOList = new ArrayList<>();
+        for (Proposal proposal : proposals) {
+            ProposalVO proposalVO = Proposal2VO.convert(proposal);
+            proposalVOList.add(proposalVO);
+        }
+        this.rabbitTemplate.convertAndSend("proposal_get_accept.queue1", proposalVOList);
     }
 
 }

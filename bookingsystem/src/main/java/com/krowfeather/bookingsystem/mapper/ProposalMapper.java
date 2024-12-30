@@ -15,4 +15,10 @@ public interface ProposalMapper extends BaseMapper<Proposal> {
 
     @Update("update proposal set status = #{i} where id = #{pid}")
     void updateStatus(Integer pid, int i);
+
+    @Select("select * from proposal where cid = #{id} and status = 2")
+    List<Proposal> getAllWithdrawProposal(Integer id);
+
+    @Select("select * from proposal where cid = #{id} and status = 1")
+    List<Proposal> getAllAcceptProposal(Integer id);
 }

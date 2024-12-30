@@ -13,4 +13,8 @@ public interface CustomerService extends IService<Customer> {
     void accept(Integer pid);
 
     String allWaitingProposal(Integer id);
+
+    String allWithdrawedProposal(Integer id);
+
+    String allAcceptedProposal(Integer id);
 }

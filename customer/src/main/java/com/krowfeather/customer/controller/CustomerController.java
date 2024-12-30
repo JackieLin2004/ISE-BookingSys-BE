@@ -68,7 +68,14 @@ public class CustomerController {
     public String allWaitingProposal(@RequestParam Integer id) {
         return this.customerService.allWaitingProposal(id);
     }
-
+    @GetMapping("/all_withdrawed_proposal")
+    public String allWithdrawedProposal(@RequestParam Integer id) {
+        return this.customerService.allWithdrawedProposal(id);
+    }
+    @GetMapping("/all_accepted_proposal")
+    public String allAcceptedProposal(@RequestParam Integer id) {
+        return this.customerService.allAcceptedProposal(id);
+    }
 
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = "send_proposal.queue1",durable = "true"),
@@ -76,7 +83,6 @@ public class CustomerController {
     ))
     public void listen(Message message) throws InterruptedException {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
-        Thread.sleep(1000);
         try {
             Map<String,Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message);
             System.out.println("RECEIVED PROPOSAL:"+data);
@@ -97,7 +103,6 @@ public class CustomerController {
     ))
     public void listen1(Message message) throws InterruptedException {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
-        Thread.sleep(1000);
         try {
             List<Map<String, Object>> data = (List<Map<String, Object>>) jackson2JsonMessageConverter.fromMessage(message);
             System.err.println("RECEIVED PROPOSAL:"+data);
@@ -111,12 +116,49 @@ public class CustomerController {
         }
     }
 
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "proposal_get_withdraw.queue1",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenWithdraw(Message message) throws InterruptedException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        try {
+            List<Map<String, Object>> data = (List<Map<String, Object>>) jackson2JsonMessageConverter.fromMessage(message);
+            System.err.println("RECEIVED PROPOSAL:"+data);
+            if(data.isEmpty()) {
+                return;
+            }
+            SseEmitter sseEmitter = sseWithdrawProposalEmitterMap.get(data.get(0).get("cid"));
+            sseEmitter.send(SseEmitter.event().data(data));
+        }catch (Exception e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "proposal_get_accept.queue1",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenAccepted(Message message) throws InterruptedException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        try {
+            List<Map<String, Object>> data = (List<Map<String, Object>>) jackson2JsonMessageConverter.fromMessage(message);
+            System.err.println("RECEIVED PROPOSAL:"+data);
+            if(data.isEmpty()) {
+                return;
+            }
+            SseEmitter sseEmitter = sseAcceptProposalEmitterMap.get(data.get(0).get("cid"));
+            sseEmitter.send(SseEmitter.event().data(data));
+        }catch (Exception e) {
+            log.error(e.getMessage());
+        }
+    }
 
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = "withdraw_notify.queue",durable = "true"),
             exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
     ))
-    public void listen2(Message message) throws InterruptedException, IOException {
+    public void listen2(Message message) throws IOException {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
         Map<String, Object> message1 = (Map<String,Object>) jackson2JsonMessageConverter.fromMessage(message);
         Integer cid = (Integer) message1.get("cid");
@@ -124,9 +166,23 @@ public class CustomerController {
         sseEmitter.send(SseEmitter.event().data("withdraw"));
     }
 
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "accept_notify.queue",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenAccept(Message message) throws IOException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> message1 = (Map<String,Object>) jackson2JsonMessageConverter.fromMessage(message);
+        Integer cid = (Integer) message1.get("cid");
+        SseEmitter sseEmitter = sseRefreshProposalEmitterMap.get(cid);
+        sseEmitter.send(SseEmitter.event().data("accept"));
+    }
+
     private final Map<Integer,SseEmitter> sseEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseWaitingProposalEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseRefreshProposalEmitterMap = new ConcurrentHashMap<>();
+    private final Map<Integer,SseEmitter> sseWithdrawProposalEmitterMap = new ConcurrentHashMap<>();
+    private final Map<Integer,SseEmitter> sseAcceptProposalEmitterMap = new ConcurrentHashMap<>();
 
     @GetMapping("/subscribe/{id}")
     public SseEmitter subscribe(@PathVariable Integer id) {
@@ -141,6 +197,24 @@ public class CustomerController {
         SseEmitter sseEmitter = new SseEmitter(0L);
         sseWaitingProposalEmitterMap.put(id,sseEmitter);
         sseEmitter.onCompletion(() -> sseWaitingProposalEmitterMap.remove(id));
+        sseEmitter.onError(e->log.error("Error in SSE stream", e));
+        return sseEmitter;
+    }
+
+    @GetMapping("/withdraw_proposal_subscribe/{id}")
+    public SseEmitter withdrawProposalSubscribe(@PathVariable Integer id) {
+        SseEmitter sseEmitter = new SseEmitter(0L);
+        sseWithdrawProposalEmitterMap.put(id,sseEmitter);
+        sseEmitter.onCompletion(() -> sseWithdrawProposalEmitterMap.remove(id));
+        sseEmitter.onError(e->log.error("Error in SSE stream", e));
+        return sseEmitter;
+    }
+
+    @GetMapping("/accept_proposal_subscribe/{id}")
+    public SseEmitter acceptProposalSubscribe(@PathVariable Integer id) {
+        SseEmitter sseEmitter = new SseEmitter(0L);
+        sseAcceptProposalEmitterMap.put(id,sseEmitter);
+        sseEmitter.onCompletion(() -> sseAcceptProposalEmitterMap.remove(id));
         sseEmitter.onError(e->log.error("Error in SSE stream", e));
         return sseEmitter;
     }
