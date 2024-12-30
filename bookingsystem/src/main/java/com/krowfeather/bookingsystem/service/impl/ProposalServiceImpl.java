@@ -49,18 +49,6 @@ public class ProposalServiceImpl extends ServiceImpl<ProposalMapper, Proposal> i
         rabbitTemplate.convertAndSend("send_proposal.queue1", data);
     }
 
-
-    @Override
-    public void processAccept(Object pid) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("pid", pid);
-        data.put("cid", proposalMapper.selectById((Serializable) pid).getCid());
-        data.put("price", proposalMapper.selectById((Serializable) pid).getTicketPrice());
-        System.out.println(data);
-        this.rabbitTemplate.convertAndSend("payment_bank.queue1", data);
-        this.rabbitTemplate.convertAndSend("payment_customer.queue1", data);
-    }
-
     @Transactional
     @Override
     public void getAllWaitingProposal(Integer id) {
@@ -90,7 +78,12 @@ public class ProposalServiceImpl extends ServiceImpl<ProposalMapper, Proposal> i
         ProposalVO proposalVO = Proposal2VO.convert(this.proposalMapper.selectById(pid));
         data.put("cid", proposalVO.getCid());
         data.put("status","ok");
+        Map<String, Object> data1 = new HashMap<>();
+        data1.put("price", proposalVO.getTicketPrice());
+        data1.put("pid", proposalVO.getId());
+        data1.put("cid", proposalVO.getCid());
         this.rabbitTemplate.convertAndSend("accept_notify.queue", data);
+        this.rabbitTemplate.convertAndSend("pay_bank.queue", data1);
     }
 
     @Override

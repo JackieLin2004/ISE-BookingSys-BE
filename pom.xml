@@ -16,5 +16,6 @@
     <modules>
         <module>customer</module>
         <module>bookingsystem</module>
+        <module>bank</module>
     </modules>
 </project>

@@ -7,8 +7,6 @@ import com.krowfeather.bookingsystem.entity.Proposal;
 public interface ProposalService extends IService<Proposal> {
     void generateProposal(Object depart, Object destination, Object cid) throws JsonProcessingException;
 
-    void processAccept(Object pid);
-
     void getAllWaitingProposal(Integer id);
 
     void processWithdraw(Integer pid);
@@ -18,4 +16,5 @@ public interface ProposalService extends IService<Proposal> {
     void getAllWithdrawProposal(Integer id);
 
     void getAllAcceptProposal(Integer id);
+
 }
