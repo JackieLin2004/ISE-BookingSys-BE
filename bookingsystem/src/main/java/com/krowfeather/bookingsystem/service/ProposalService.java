@@ -17,4 +17,9 @@ public interface ProposalService extends IService<Proposal> {
 
     void getAllAcceptProposal(Integer id);
 
+    void processComplete(Integer pid, Integer orderId);
+
+    void processPayment(Integer pid);
+
+    void getAllPaidProposal(Integer id);
 }

@@ -2,10 +2,7 @@ package com.krowfeather.bank.controller;
 
 import com.krowfeather.bank.service.OrderService;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/bank")
@@ -14,8 +11,9 @@ public class BankController {
     @Resource
     OrderService orderService;
 
-    @PostMapping("/pay")
-    public String pay(@RequestParam int pid, @RequestParam int type) {
+    @PostMapping("/pay/{pid}/{type}")
+    public String pay(@PathVariable Integer pid,@PathVariable Integer type) {
+        System.out.println("pid : " + pid+" type : "+type);
         return orderService.pay(pid, type);
     }
 }

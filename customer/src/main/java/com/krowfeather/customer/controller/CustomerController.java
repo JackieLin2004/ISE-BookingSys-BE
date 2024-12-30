@@ -76,7 +76,10 @@ public class CustomerController {
     public String allAcceptedProposal(@RequestParam Integer id) {
         return this.customerService.allAcceptedProposal(id);
     }
-
+    @GetMapping("/all_paid_proposal")
+    public String allPaidProposal(@RequestParam Integer id) {
+        return this.customerService.allPaidProposal(id);
+    }
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = "send_proposal.queue1",durable = "true"),
             exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
@@ -90,7 +93,7 @@ public class CustomerController {
             Map proposal1 = objectMapper.readValue(proposal, Map.class);
             Integer cid = (Integer) proposal1.get("cid");
             System.out.println(cid);
-            SseEmitter sseEmitter = sseEmitterMap.get(cid);
+            SseEmitter sseEmitter = sseRefreshProposalEmitterMap.get(cid);
             sseEmitter.send(SseEmitter.event().data(proposal));
         } catch (Exception e) {
             log.error(e.getMessage());
@@ -155,6 +158,25 @@ public class CustomerController {
     }
 
     @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "proposal_get_paid.queue1",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenPaid(Message message) throws InterruptedException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        try {
+            List<Map<String, Object>> data = (List<Map<String, Object>>) jackson2JsonMessageConverter.fromMessage(message);
+            System.err.println("RECEIVED PROPOSAL:"+data);
+            if(data.isEmpty()) {
+                return;
+            }
+            SseEmitter sseEmitter = ssePaidProposalEmitterMap.get(data.get(0).get("cid"));
+            sseEmitter.send(SseEmitter.event().data(data));
+        }catch (Exception e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = "withdraw_notify.queue",durable = "true"),
             exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
     ))
@@ -178,20 +200,36 @@ public class CustomerController {
         sseEmitter.send(SseEmitter.event().data("accept"));
     }
 
-    private final Map<Integer,SseEmitter> sseEmitterMap = new ConcurrentHashMap<>();
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "proposal_order_complete.queue",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenComplete(Message message) throws IOException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> message1 = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message);
+        Integer cid = (Integer) message1.get("cid");
+        SseEmitter sseEmitter = sseRefreshProposalEmitterMap.get(cid);
+        sseEmitter.send(SseEmitter.event().data("complete"));
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(value = "payment_notify.queue",durable = "true"),
+            exchange = @Exchange(value = "kf.fanout",type = ExchangeTypes.FANOUT)
+    ))
+    public void listenPayment(Message message) throws IOException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> message1 = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message);
+        Integer cid = (Integer) message1.get("cid");
+        SseEmitter sseEmitter = sseRefreshProposalEmitterMap.get(cid);
+        sseEmitter.send(SseEmitter.event().data("payment_ok"));
+    }
+
     private final Map<Integer,SseEmitter> sseWaitingProposalEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseRefreshProposalEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseWithdrawProposalEmitterMap = new ConcurrentHashMap<>();
     private final Map<Integer,SseEmitter> sseAcceptProposalEmitterMap = new ConcurrentHashMap<>();
+    private final Map<Integer,SseEmitter> ssePaidProposalEmitterMap = new ConcurrentHashMap<>();
 
-    @GetMapping("/subscribe/{id}")
-    public SseEmitter subscribe(@PathVariable Integer id) {
-        SseEmitter sseEmitter = new SseEmitter(0L);
-        sseEmitterMap.put(id,sseEmitter);
-        sseEmitter.onCompletion(() -> sseEmitterMap.remove(id));
-        sseEmitter.onError(e->log.error("Error in SSE stream", e));
-        return sseEmitter;
-    }
     @GetMapping("/waiting_proposal_subscribe/{id}")
     public SseEmitter waitingProposalSubscribe(@PathVariable Integer id) {
         SseEmitter sseEmitter = new SseEmitter(0L);
@@ -218,6 +256,16 @@ public class CustomerController {
         sseEmitter.onError(e->log.error("Error in SSE stream", e));
         return sseEmitter;
     }
+
+    @GetMapping("/paid_proposal_subscribe/{id}")
+    public SseEmitter paidProposalSubscribe(@PathVariable Integer id) {
+        SseEmitter sseEmitter = new SseEmitter(0L);
+        ssePaidProposalEmitterMap.put(id,sseEmitter);
+        sseEmitter.onCompletion(() -> ssePaidProposalEmitterMap.remove(id));
+        sseEmitter.onError(e->log.error("Error in SSE stream", e));
+        return sseEmitter;
+    }
+
     @GetMapping("/refresh_proposal_subscribe/{id}")
     public SseEmitter refreshProposalSubscribe(@PathVariable Integer id) {
         SseEmitter sseEmitter = new SseEmitter(0L);

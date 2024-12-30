@@ -12,6 +12,7 @@ public class Proposal2VO {
         proposalVO1.setTotalPrice(proposal.getTotalPrice());
         proposalVO1.setTicketPrice(proposal.getTicketPrice());
         proposalVO1.setCid(proposal.getCid());
+        proposalVO1.setPrepared(proposal.getPrepared());
         return proposalVO1;
     }
 }

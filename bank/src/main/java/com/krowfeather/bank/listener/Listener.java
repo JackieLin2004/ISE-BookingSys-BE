@@ -1,7 +1,5 @@
 package com.krowfeather.bank.listener;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.krowfeather.bank.service.OrderService;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -29,7 +27,7 @@ public class Listener {
             value = @Queue(name = "pay_bank.queue", durable = "true"),
             exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
     ))
-    public void paymentListener(Message message) {
+    public void paymentListener(Message message) throws InterruptedException {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
         Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
         System.err.println("PAYMENT SERVICE Received message: " + data);

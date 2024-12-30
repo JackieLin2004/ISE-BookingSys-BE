@@ -12,7 +12,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.Serializable;
 import java.util.*;
 
 @Service
@@ -106,6 +105,38 @@ public class ProposalServiceImpl extends ServiceImpl<ProposalMapper, Proposal> i
             proposalVOList.add(proposalVO);
         }
         this.rabbitTemplate.convertAndSend("proposal_get_accept.queue1", proposalVOList);
+    }
+
+    @Override
+    public void processComplete(Integer pid, Integer orderId) {
+        this.proposalMapper.updatePrepared(pid);
+        Integer cid = this.proposalMapper.getCid(pid);
+        Map<String, Object> data = new HashMap<>();
+        data.put("pid", pid);
+        data.put("cid", cid);
+        data.put("orderId", orderId);
+        this.rabbitTemplate.convertAndSend("proposal_order_complete.queue", data);
+    }
+
+    @Override
+    public void processPayment(Integer pid) {
+        this.proposalMapper.updateStatus(pid, 3);
+        Map<String, Object> data = new HashMap<>();
+        Integer cid = this.proposalMapper.getCid(pid);
+        data.put("cid", cid);
+        data.put("status","ok");
+        this.rabbitTemplate.convertAndSend("payment_notify.queue", data);
+    }
+
+    @Override
+    public void getAllPaidProposal(Integer id) {
+        List<Proposal> proposals = proposalMapper.getAllPaidProposal(id);
+        List<ProposalVO> proposalVOList = new ArrayList<>();
+        for (Proposal proposal : proposals) {
+            ProposalVO proposalVO = Proposal2VO.convert(proposal);
+            proposalVOList.add(proposalVO);
+        }
+        this.rabbitTemplate.convertAndSend("proposal_get_paid.queue1", proposalVOList);
     }
 
 }

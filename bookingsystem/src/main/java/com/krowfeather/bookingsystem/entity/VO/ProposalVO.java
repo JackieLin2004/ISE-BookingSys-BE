@@ -15,4 +15,5 @@ public class ProposalVO {
     private Integer ticketPrice;
     private Integer days;
     private Integer cid;
+    private Integer prepared;
 }

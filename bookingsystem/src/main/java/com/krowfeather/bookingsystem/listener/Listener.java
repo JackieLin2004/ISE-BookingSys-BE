@@ -95,12 +95,35 @@ public class Listener {
     }
 
     @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = "pay_notify2bank.queue", durable = "true"),
+            value = @Queue(name = "proposal_get_paid.queue", durable = "true"),
+            exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
+    ))
+    public void ProposalGetPaidListener(Message message) {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
+        System.out.println("PROPOSAL GET SERVICE Received message: " + data);
+        proposalService.getAllPaidProposal((Integer) data.get("id"));
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "pay_notify2bookingsys.queue", durable = "true"),
             exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
     ))
     public void PaymentListener(Message message) {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
         Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
         System.out.println("Payment GET SERVICE Received message: " + data);
+        this.proposalService.processPayment((Integer) data.get("pid"));
+    }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "order_complete.queue", durable = "true"),
+            exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
+    ))
+    public void OrderCompleteListener(Message message) {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
+        System.out.println("OrderComplete GET SERVICE Received message: " + data);
+        this.proposalService.processComplete((Integer) data.get("pid"), (Integer) data.get("orderId"));
     }
 }

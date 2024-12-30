@@ -21,4 +21,5 @@ public class Proposal {
     private Integer days;
     private Integer cid;
     private Integer status;
+    private Integer prepared;
 }

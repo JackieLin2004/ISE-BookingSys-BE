@@ -17,4 +17,6 @@ public interface CustomerService extends IService<Customer> {
     String allWithdrawedProposal(Integer id);
 
     String allAcceptedProposal(Integer id);
+
+    String allPaidProposal(Integer id);
 }

@@ -27,12 +27,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     }
 
     @Override
-    public void createOrder(Integer price, Integer pid, Integer cid) {
-//        this.orderMapper.insertOrder((Integer) price, (Integer) pid, (Integer) cid);
+    public void createOrder(Integer price, Integer pid, Integer cid) throws InterruptedException {
         Orders order = new Orders();
         order.setPid(pid);
         order.setPrice(price);
         orderMapper.insertEntity(pid, price);
+        Map<String, Object> map = new HashMap<>();
+        Integer orderId = orderMapper.getOrderId(pid);
+        map.put("orderId", orderId);
+        map.put("pid", pid);
+        Thread.sleep(2000);
+        this.rabbitTemplate.convertAndSend("order_complete.queue", map);
     }
 
     @Transactional
@@ -55,7 +60,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         orderMapper.update(null, updateWrapper);
 
         Map<String, Object> data = Map.of("pid", pid);
-        this.rabbitTemplate.convertAndSend("pay_notify2bank.queue", data);
+        this.rabbitTemplate.convertAndSend("pay_notify2bookingsys.queue", data);
         return "Payment successful";
     }
 }
