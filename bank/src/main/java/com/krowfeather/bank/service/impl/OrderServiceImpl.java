@@ -27,12 +27,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     }
 
     @Override
-    public void createOrder(Object pid, Object cid, Object price) {
+    public void createOrder(Integer price, Integer pid, Integer cid) {
 //        this.orderMapper.insertOrder((Integer) price, (Integer) pid, (Integer) cid);
         Orders order = new Orders();
-        order.setPid((Integer) pid);
-        order.setPrice((Integer) price);
-        orderMapper.insertEntity((Integer) pid, (Integer) price);
+        order.setPid(pid);
+        order.setPrice(price);
+        orderMapper.insertEntity(pid, price);
     }
 
     @Transactional

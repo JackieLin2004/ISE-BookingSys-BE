@@ -33,6 +33,6 @@ public class Listener {
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
         Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
         System.err.println("PAYMENT SERVICE Received message: " + data);
-        this.orderService.createOrder(data.get("price"), data.get("pid"), data.get("cid"));
+        this.orderService.createOrder((Integer) data.get("price"), (Integer) data.get("pid"), (Integer) data.get("cid"));
     }
 }
