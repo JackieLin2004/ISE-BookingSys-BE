@@ -5,10 +5,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.krowfeather.bank.service.OrderService;
 import org.springframework.amqp.core.ExchangeTypes;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -24,12 +26,13 @@ public class Listener {
     }
 
     @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = "payment_bank.queue1", durable = "true"),
+            value = @Queue(name = "pay_bank.queue", durable = "true"),
             exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
     ))
-    public void paymentListener(String message) throws JsonProcessingException {
-        Map<String, Object> data = objectMapper.readValue(message, new TypeReference<Map<String, Object>>() {});
+    public void paymentListener(Message message) {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
         System.err.println("PAYMENT SERVICE Received message: " + data);
-        this.orderService.createOrder(data.get("pid"),data.get("cid"),data.get("price"));
+        this.orderService.createOrder(data.get("price"), data.get("pid"), data.get("cid"));
     }
 }

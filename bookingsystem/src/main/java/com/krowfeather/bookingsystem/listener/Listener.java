@@ -94,4 +94,14 @@ public class Listener {
         System.out.println("PROPOSAL GET SERVICE Received message: " + data);
         proposalService.getAllAcceptProposal((Integer) data.get("id"));
     }
+
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "pay_notify2bank.queue", durable = "true"),
+            exchange = @Exchange(name = "kf.fanout", type = ExchangeTypes.FANOUT)
+    ))
+    public void PaymentListener(Message message) throws JsonProcessingException {
+        Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
+        Map<String, Object> data = (Map<String, Object>) jackson2JsonMessageConverter.fromMessage(message, Map.class);
+        System.out.println("Payment GET SERVICE Received message: " + data);
+    }
 }
